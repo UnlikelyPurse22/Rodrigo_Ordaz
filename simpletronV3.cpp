@@ -1,4 +1,4 @@
-// Simpletron - Actualizacion 5: Salida de nueva linea
+// Simpletron - Actualizacion 6: Entrada de cadenas ASCII
 // C++ sencillo: funciones, arreglos, switch y printf (estilo del proyecto).
 // Archivo completo y acumulativo: se usa como simpletron.cpp en cada commit.
 #include <stdio.h>
@@ -134,7 +134,6 @@ int ejecutarPrograma(int memory[], int *accumulator, int *instructionCounter,
                      int *instructionRegister, int *operationCode, int *operand,
                      int instruccionesCargadas)
 {
-    (void)instruccionesCargadas;  // Se utilizara desde la etapa 6.
     int ejecutando = 1;
     while (ejecutando) {
         if (*instructionCounter < 0 || *instructionCounter >= TAM_MEMORIA) {
@@ -216,6 +215,40 @@ int ejecutarPrograma(int memory[], int *accumulator, int *instructionCounter,
             case 12:  // NUEVA LINEA (el operando se ignora)
                 putchar('\n');
                 break;
+            case 13: {  // LEER CADENA ASCII
+                // Formato 1ra palabra LLAAA: LL=longitud (00..99), AAA=primer ASCII.
+                // Cada caracter adicional se guarda en una palabra 00AAA.
+                // Es un caracter por palabra: un entero de 5 digitos no admite dos ASCII de 3 digitos.
+                char texto[1024];
+                printf("Ingrese una cadena (hasta 99 caracteres ASCII): ");
+                fflush(stdout);
+                if (!leerLinea(texto, sizeof(texto))) {
+                    printf("ERROR FATAL: cadena demasiado larga o entrada no disponible.\n");
+                    return 0;
+                }
+                int longitud = (int)strlen(texto);
+                if (longitud > 99 || (longitud > 0 && *operand + longitud > TAM_MEMORIA)) {
+                    printf("ERROR FATAL: cadena fuera de los limites de memoria o de longitud.\n");
+                    return 0;
+                }
+                for (int i=0; i<longitud; i++) {
+                    if ((unsigned char)texto[i] > 127) {
+                        printf("ERROR FATAL: solo se admite ASCII de 0 a 127.\n");
+                        return 0;
+                    }
+                }
+                // No sobrescribir instrucciones del programa.
+                if (*operand < instruccionesCargadas) {
+                    printf("ERROR FATAL: la cadena invadiria las instrucciones.\n");
+                    return 0;
+                }
+                memory[*operand] = longitud * 1000 +
+                                   (longitud > 0 ? (unsigned char)texto[0] : 0);
+                for (int i=1; i<longitud; i++) {
+                    memory[*operand + i] = (unsigned char)texto[i];
+                }
+                break;
+            }
             case 34:  // RESIDUO: acumulador % memoria[operando]
                 if (memory[*operand] == 0) {
                     printf("ERROR FATAL: modulo entre cero.\n");
@@ -294,7 +327,7 @@ int main()
     int operand = 0;
     int instruccionesCargadas = 0;
 
-    printf("*** Bienvenido a Simpletron - Actualizacion 5 ***\n");
+    printf("*** Bienvenido a Simpletron - Actualizacion 6 ***\n");
     if (!cargarPrograma(memory, &instruccionesCargadas)) return 1;
     printf("Comienza la ejecucion de Simpletron.\n");
     int exito = ejecutarPrograma(memory, &accumulator, &instructionCounter,
