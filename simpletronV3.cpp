@@ -1,4 +1,4 @@
-// Simpletron - Actualizacion 2: Vaciado y validacion de memoria de 1000 posiciones
+// Simpletron - Actualizacion 3: Operacion modulo
 // C++ sencillo: funciones, arreglos, switch y printf (estilo del proyecto).
 // Archivo completo y acumulativo: se usa como simpletron.cpp en cada commit.
 #include <stdio.h>
@@ -213,7 +213,13 @@ int ejecutarPrograma(int memory[], int *accumulator, int *instructionCounter,
                 }
                 *accumulator = (int)resultado;
                 break;
-
+            case 34:  // RESIDUO: acumulador % memoria[operando]
+                if (memory[*operand] == 0) {
+                    printf("ERROR FATAL: modulo entre cero.\n");
+                    return 0;
+                }
+                *accumulator = *accumulator % memory[*operand];
+                break;
             case 40:  // GOTO
                 *instructionCounter = *operand;
                 break;
@@ -268,7 +274,7 @@ int main()
     int operand = 0;
     int instruccionesCargadas = 0;
 
-    printf("*** Bienvenido a Simpletron - Actualizacion 2 ***\n");
+    printf("*** Bienvenido a Simpletron - Actualizacion 3 ***\n");
     if (!cargarPrograma(memory, &instruccionesCargadas)) return 1;
     printf("Comienza la ejecucion de Simpletron.\n");
     int exito = ejecutarPrograma(memory, &accumulator, &instructionCounter,
