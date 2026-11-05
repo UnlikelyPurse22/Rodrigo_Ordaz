@@ -1,4 +1,4 @@
-// Simpletron - Actualizacion 4: Exponenciacion
+// Simpletron - Actualizacion 5: Salida de nueva linea
 // C++ sencillo: funciones, arreglos, switch y printf (estilo del proyecto).
 // Archivo completo y acumulativo: se usa como simpletron.cpp en cada commit.
 #include <stdio.h>
@@ -213,6 +213,9 @@ int ejecutarPrograma(int memory[], int *accumulator, int *instructionCounter,
                 }
                 *accumulator = (int)resultado;
                 break;
+            case 12:  // NUEVA LINEA (el operando se ignora)
+                putchar('\n');
+                break;
             case 34:  // RESIDUO: acumulador % memoria[operando]
                 if (memory[*operand] == 0) {
                     printf("ERROR FATAL: modulo entre cero.\n");
@@ -291,7 +294,7 @@ int main()
     int operand = 0;
     int instruccionesCargadas = 0;
 
-    printf("*** Bienvenido a Simpletron - Actualizacion 4 ***\n");
+    printf("*** Bienvenido a Simpletron - Actualizacion 5 ***\n");
     if (!cargarPrograma(memory, &instruccionesCargadas)) return 1;
     printf("Comienza la ejecucion de Simpletron.\n");
     int exito = ejecutarPrograma(memory, &accumulator, &instructionCounter,
