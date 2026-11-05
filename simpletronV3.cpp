@@ -1,4 +1,4 @@
-// Simpletron - Actualizacion 1: Carga automatica desde programa.simp
+// Simpletron - Actualizacion 2: Vaciado y validacion de memoria de 1000 posiciones
 // C++ sencillo: funciones, arreglos, switch y printf (estilo del proyecto).
 // Archivo completo y acumulativo: se usa como simpletron.cpp en cada commit.
 #include <stdio.h>
@@ -247,15 +247,14 @@ void vaciadoMemoria(int memory[], int accumulator, int instructionCounter,
     printf("Codigo de operacion:    %02d\n", operationCode);
     printf("Operando:               %03d\n", operand);
 
-    printf("MEMORIA ENTERA (posiciones con datos):\n");
-    int encontrados = 0;
+    printf("MEMORIA ENTERA:\n        ");
+    for (int i=0; i<10; i++) printf("%8d", i);
+    printf("\n");
     for (int i=0; i<TAM_MEMORIA; i++) {
-        if (memory[i] != 0) {
-            printf("[%03d] = %+06d\n", i, memory[i]);
-            encontrados++;
-        }
+        if (i % 10 == 0) printf("%03d     ", i);
+        printf("%+06d  ", memory[i]);
+        if (i % 10 == 9) printf("\n");
     }
-    if (encontrados == 0) printf("(sin valores diferentes de cero)\n");
     printf("=====================================================\n");
 }
 
@@ -269,7 +268,7 @@ int main()
     int operand = 0;
     int instruccionesCargadas = 0;
 
-    printf("*** Bienvenido a Simpletron - Actualizacion 1 ***\n");
+    printf("*** Bienvenido a Simpletron - Actualizacion 2 ***\n");
     if (!cargarPrograma(memory, &instruccionesCargadas)) return 1;
     printf("Comienza la ejecucion de Simpletron.\n");
     int exito = ejecutarPrograma(memory, &accumulator, &instructionCounter,
