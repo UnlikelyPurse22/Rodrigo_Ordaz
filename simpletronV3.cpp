@@ -1,4 +1,4 @@
-// Simpletron - Actualizacion 7: Salida de cadenas ASCII
+// Simpletron - Actualizacion 8: Punto flotante double
 // C++ sencillo: funciones, arreglos, switch y printf (estilo del proyecto).
 // Archivo completo y acumulativo: se usa como simpletron.cpp en cada commit.
 #include <stdio.h>
@@ -132,7 +132,7 @@ int cargarPrograma(int memory[], int *instruccionesCargadas)
 // Devuelve 1 cuando termina con ALTO; 0 ante error fatal.
 int ejecutarPrograma(int memory[], int *accumulator, int *instructionCounter,
                      int *instructionRegister, int *operationCode, int *operand,
-                     int instruccionesCargadas)
+                     int instruccionesCargadas, double floatMemory[], double *floatAccumulator)
 {
     int ejecutando = 1;
     while (ejecutando) {
@@ -309,7 +309,68 @@ int ejecutarPrograma(int memory[], int *accumulator, int *instructionCounter,
             case 43:  // ALTO
                 ejecutando = 0;
                 break;
-
+            case 50: {  // LEER FLOAT (double) hacia memoria flotante
+                char texto[256];
+                printf("Ingrese un numero decimal: ");
+                fflush(stdout);
+                if (!leerLinea(texto, sizeof(texto))) {
+                    printf("ERROR FATAL: entrada decimal no disponible.\n");
+                    return 0;
+                }
+                char *fin;
+                errno = 0;
+                const char *inicio = texto;
+                while (isspace((unsigned char)*inicio)) inicio++;
+                double valor = strtod(inicio, &fin);
+                while (isspace((unsigned char)*fin)) fin++;
+                if (fin == inicio || *fin != '\0' || errno == ERANGE || !std::isfinite(valor)) {
+                    printf("ERROR FATAL: numero decimal invalido.\n");
+                    return 0;
+                }
+                floatMemory[*operand] = valor;
+                break;
+            }
+            case 51:  // ESCRIBIR FLOAT
+                printf("Salida decimal: %.15g\n", floatMemory[*operand]);
+                break;
+            case 52:  // CARGAR FLOAT
+                *floatAccumulator = floatMemory[*operand];
+                break;
+            case 53:  // ALMACENAR FLOAT
+                floatMemory[*operand] = *floatAccumulator;
+                break;
+            case 54:  // SUMAR FLOAT
+                *floatAccumulator += floatMemory[*operand];
+                if (!std::isfinite(*floatAccumulator)) {
+                    printf("ERROR FATAL: desbordamiento decimal.\n");
+                    return 0;
+                }
+                break;
+            case 55:  // RESTAR FLOAT
+                *floatAccumulator -= floatMemory[*operand];
+                if (!std::isfinite(*floatAccumulator)) {
+                    printf("ERROR FATAL: desbordamiento decimal.\n");
+                    return 0;
+                }
+                break;
+            case 56:  // MULTIPLICAR FLOAT
+                *floatAccumulator *= floatMemory[*operand];
+                if (!std::isfinite(*floatAccumulator)) {
+                    printf("ERROR FATAL: desbordamiento decimal.\n");
+                    return 0;
+                }
+                break;
+            case 57:  // DIVIDIR FLOAT
+                if (floatMemory[*operand] == 0.0) {
+                    printf("ERROR FATAL: division decimal entre cero.\n");
+                    return 0;
+                }
+                *floatAccumulator /= floatMemory[*operand];
+                if (!std::isfinite(*floatAccumulator)) {
+                    printf("ERROR FATAL: desbordamiento decimal.\n");
+                    return 0;
+                }
+                break;
             default:
                 printf("ERROR FATAL: codigo de operacion invalido: %d.\n", *operationCode);
                 return 0;
@@ -320,7 +381,7 @@ int ejecutarPrograma(int memory[], int *accumulator, int *instructionCounter,
 }
 
 void vaciadoMemoria(int memory[], int accumulator, int instructionCounter,
-                    int instructionRegister, int operationCode, int operand)
+                    int instructionRegister, int operationCode, int operand, double floatMemory[], double floatAccumulator)
 {
     printf("\n=============== VACIADO DE SIMPLETRON ===============\n");
     printf("REGISTROS:\n");
@@ -329,7 +390,16 @@ void vaciadoMemoria(int memory[], int accumulator, int instructionCounter,
     printf("Registro de instruccion: %+06d\n", instructionRegister);
     printf("Codigo de operacion:    %02d\n", operationCode);
     printf("Operando:               %03d\n", operand);
-
+    printf("Acumulador flotante: %.15g\n", floatAccumulator);
+    printf("MEMORIA FLOTANTE (celdas diferentes de cero):\n");
+    int total = 0;
+    for (int i=0; i<TAM_MEMORIA; i++) {
+        if (floatMemory[i] != 0.0) {
+            printf("  [%03d] = %.15g\n", i, floatMemory[i]);
+            total++;
+        }
+    }
+    if (!total) printf("  (sin valores no nulos)\n");
     printf("MEMORIA ENTERA:\n        ");
     for (int i=0; i<10; i++) printf("%8d", i);
     printf("\n");
@@ -350,14 +420,15 @@ int main()
     int operationCode = 0;
     int operand = 0;
     int instruccionesCargadas = 0;
-
-    printf("*** Bienvenido a Simpletron - Actualizacion 7 ***\n");
+    double floatMemory[TAM_MEMORIA] = {0.0};
+    double floatAccumulator = 0.0;
+    printf("*** Bienvenido a Simpletron - Actualizacion 8 ***\n");
     if (!cargarPrograma(memory, &instruccionesCargadas)) return 1;
     printf("Comienza la ejecucion de Simpletron.\n");
     int exito = ejecutarPrograma(memory, &accumulator, &instructionCounter,
                                 &instructionRegister, &operationCode, &operand,
-                                instruccionesCargadas);
+                                instruccionesCargadas, floatMemory, &floatAccumulator);
     vaciadoMemoria(memory, accumulator, instructionCounter,
-                   instructionRegister, operationCode, operand);
+                   instructionRegister, operationCode, operand, floatMemory, floatAccumulator);
     return exito ? 0 : 1;
 }
