@@ -1,4 +1,4 @@
-// Simpletron - Actualizacion 3: Operacion modulo
+// Simpletron - Actualizacion 4: Exponenciacion
 // C++ sencillo: funciones, arreglos, switch y printf (estilo del proyecto).
 // Archivo completo y acumulativo: se usa como simpletron.cpp en cada commit.
 #include <stdio.h>
@@ -220,6 +220,23 @@ int ejecutarPrograma(int memory[], int *accumulator, int *instructionCounter,
                 }
                 *accumulator = *accumulator % memory[*operand];
                 break;
+            case 35: {  // POTENCIA: acumulador ^ memoria[operando]
+                int exponente = memory[*operand];
+                if (exponente < 0) {
+                    printf("ERROR FATAL: exponente negativo no admitido.\n");
+                    return 0;
+                }
+                long long potencia = 1;  // 0^0 se define como 1 en esta maquina.
+                for (int i=0; i<exponente; i++) {
+                    potencia *= *accumulator;
+                    if (potencia < MINIMO || potencia > MAXIMO) {
+                        printf("ERROR FATAL: desbordamiento en potencia.\n");
+                        return 0;
+                    }
+                }
+                *accumulator = (int)potencia;
+                break;
+            }
             case 40:  // GOTO
                 *instructionCounter = *operand;
                 break;
@@ -274,7 +291,7 @@ int main()
     int operand = 0;
     int instruccionesCargadas = 0;
 
-    printf("*** Bienvenido a Simpletron - Actualizacion 3 ***\n");
+    printf("*** Bienvenido a Simpletron - Actualizacion 4 ***\n");
     if (!cargarPrograma(memory, &instruccionesCargadas)) return 1;
     printf("Comienza la ejecucion de Simpletron.\n");
     int exito = ejecutarPrograma(memory, &accumulator, &instructionCounter,
