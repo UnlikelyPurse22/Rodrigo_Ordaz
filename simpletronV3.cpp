@@ -1,0 +1,281 @@
+// Simpletron - Actualizacion 1: Carga automatica desde programa.simp
+// C++ sencillo: funciones, arreglos, switch y printf (estilo del proyecto).
+// Archivo completo y acumulativo: se usa como simpletron.cpp en cada commit.
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <ctype.h>
+#include <math.h>
+#include <limits.h>
+#include <cmath>
+
+#define TAM_MEMORIA 1000
+#define MINIMO -99999
+#define MAXIMO 99998
+#define BASE_INSTRUCCION 1000
+#define FIN_CARGA 99999
+
+// Los codigos de operacion tienen 2 digitos.
+// El operando tiene 3 digitos.
+
+int leerEntero(const char texto[], long long *numero)
+{
+    char *fin;
+    errno = 0;
+    while (isspace((unsigned char)*texto)) texto++;
+    if (*texto == '\0') return 0;
+    long long valor = strtoll(texto, &fin, 10);
+    if (errno == ERANGE || fin == texto) return 0;
+    while (isspace((unsigned char)*fin)) fin++;
+    if (*fin != '\0') return 0;
+    *numero = valor;
+    return 1;
+}
+
+int leerLinea(char buffer[], int capacidad)
+{
+    if (fgets(buffer, capacidad, stdin) == NULL) return 0;
+    size_t longitud = strlen(buffer);
+    if (longitud > 0 && buffer[longitud - 1] == '\n') {
+        buffer[--longitud] = '\0';
+    } else if (!feof(stdin)) {
+        // Evita aceptar una linea truncada; limpia el resto.
+        int caracter;
+        caracter = getchar();
+        if (caracter != '\n' && caracter != EOF) {
+            while ((caracter = getchar()) != '\n' && caracter != EOF) { }
+            return 0;
+        }
+    }
+    longitud = strlen(buffer);
+    if (longitud > 0 && buffer[longitud - 1] == '\r') buffer[longitud - 1] = '\0';
+    return 1;
+}
+
+// 1 = se cargo correctamente; 0 = error (no ejecutar nada).
+// Si no existe programa.simp se usa carga interactiva.
+int cargarPrograma(int memory[], int *instruccionesCargadas)
+{
+    FILE *archivo = fopen("programa.simp", "r");
+    int temporal[TAM_MEMORIA] = {0};
+    int contador = 0;
+    char linea[2048];
+    if (archivo != NULL) {
+        int numeroLinea = 0;
+        printf("Cargando programa desde programa.simp...\n");
+        while (fgets(linea, sizeof(linea), archivo) != NULL) {
+            numeroLinea++;
+            size_t longitud = strlen(linea);
+            if (longitud == sizeof(linea)-1 && linea[longitud-1] != '\n') {
+                printf("ERROR: linea %d demasiado larga.\n", numeroLinea);
+                fclose(archivo);
+                return 0;
+            }
+            char *inicio = linea;
+            while (isspace((unsigned char)*inicio)) inicio++;
+            if (*inicio == '\0' || *inicio == '#') continue;
+            long long valor;
+            if (!leerEntero(inicio, &valor) || valor < MINIMO || valor > FIN_CARGA) {
+                printf("ERROR: linea %d invalida en programa.simp.\n", numeroLinea);
+                fclose(archivo);
+                return 0;
+            }
+            if (valor == FIN_CARGA) break;
+            if (contador >= TAM_MEMORIA) {
+                printf("ERROR: programa supera las %d posiciones.\n", TAM_MEMORIA);
+                fclose(archivo);
+                return 0;
+            }
+            temporal[contador++] = (int)valor;
+        }
+        if (ferror(archivo)) {
+            printf("ERROR: no se pudo leer todo el archivo.\n");
+            fclose(archivo);
+            return 0;
+        }
+        fclose(archivo);
+    } else if (errno == ENOENT) {
+        printf("No existe programa.simp. Carga interactiva.\n");
+        printf("Ingrese instrucciones; %d para finalizar.\n", FIN_CARGA);
+        while (contador < TAM_MEMORIA) {
+            printf("%03d ? ", contador);
+            fflush(stdout);
+            if (!leerLinea(linea, sizeof(linea))) {
+                printf("ERROR: entrada inexistente o demasiado larga.\n");
+                return 0;
+            }
+            long long valor;
+            if (!leerEntero(linea, &valor) || valor < MINIMO || valor > FIN_CARGA) {
+                printf("Valor invalido. Rango %d a %d.\n", MINIMO, MAXIMO);
+                continue;
+            }
+            if (valor == FIN_CARGA) break;
+            temporal[contador++] = (int)valor;
+        }
+    } else {
+        printf("ERROR: no se puede abrir programa.simp (codigo %d).\n", errno);
+        return 0;
+    }
+    if (contador == 0) {
+        printf("ERROR: el programa esta vacio.\n");
+        return 0;
+    }
+    for (int i=0; i<TAM_MEMORIA; i++) memory[i] = temporal[i];
+    *instruccionesCargadas = contador;
+    printf("Se cargaron %d palabras de programa.\n", contador);
+    return 1;
+}
+
+
+
+// Devuelve 1 cuando termina con ALTO; 0 ante error fatal.
+int ejecutarPrograma(int memory[], int *accumulator, int *instructionCounter,
+                     int *instructionRegister, int *operationCode, int *operand,
+                     int instruccionesCargadas)
+{
+    (void)instruccionesCargadas;  // Se utilizara desde la etapa 6.
+    int ejecutando = 1;
+    while (ejecutando) {
+        if (*instructionCounter < 0 || *instructionCounter >= TAM_MEMORIA) {
+            printf("ERROR FATAL: contador fuera de memoria.\n");
+            return 0;
+        }
+        *instructionRegister = memory[*instructionCounter];
+        if (*instructionRegister < 0) {
+            printf("ERROR FATAL: instruccion negativa no valida.\n");
+            return 0;
+        }
+        *operationCode = *instructionRegister / BASE_INSTRUCCION;
+        *operand = *instructionRegister % BASE_INSTRUCCION;
+        (*instructionCounter)++;
+        if (*operand < 0 || *operand >= TAM_MEMORIA) {
+            printf("ERROR FATAL: direccion %d fuera de memoria.\n", *operand);
+            return 0;
+        }
+        long long resultado = 0;
+        switch (*operationCode) {
+            case 10: {  // LEER entero
+                char texto[256];
+                long long valor;
+                printf("Ingrese un entero: ");
+                fflush(stdout);
+                if (!leerLinea(texto, sizeof(texto)) || !leerEntero(texto, &valor)
+                    || valor < MINIMO || valor > MAXIMO) {
+                    printf("ERROR FATAL: entero invalido o fuera de rango.\n");
+                    return 0;
+                }
+                memory[*operand] = (int)valor;
+                break;
+            }
+            case 11:  // ESCRIBIR entero
+                printf("Salida: %d\n", memory[*operand]);
+                break;
+            case 20:  // CARGAR
+                *accumulator = memory[*operand];
+                break;
+            case 21:  // ALMACENAR
+                memory[*operand] = *accumulator;
+                break;
+            case 30:  // SUMAR
+                resultado = (long long)*accumulator + memory[*operand];
+                if (resultado < MINIMO || resultado > MAXIMO) {
+                    printf("ERROR FATAL: desbordamiento en suma.\n");
+                    return 0;
+                }
+                *accumulator = (int)resultado;
+                break;
+            case 31:  // RESTAR
+                resultado = (long long)*accumulator - memory[*operand];
+                if (resultado < MINIMO || resultado > MAXIMO) {
+                    printf("ERROR FATAL: desbordamiento en resta.\n");
+                    return 0;
+                }
+                *accumulator = (int)resultado;
+                break;
+            case 32:  // DIVIDIR (division entera)
+                if (memory[*operand] == 0) {
+                    printf("ERROR FATAL: division entre cero.\n");
+                    return 0;
+                }
+                resultado = (long long)*accumulator / memory[*operand];
+                if (resultado < MINIMO || resultado > MAXIMO) {
+                    printf("ERROR FATAL: desbordamiento en division.\n");
+                    return 0;
+                }
+                *accumulator = (int)resultado;
+                break;
+            case 33:  // MULTIPLICAR
+                resultado = (long long)*accumulator * memory[*operand];
+                if (resultado < MINIMO || resultado > MAXIMO) {
+                    printf("ERROR FATAL: desbordamiento en multiplicacion.\n");
+                    return 0;
+                }
+                *accumulator = (int)resultado;
+                break;
+
+            case 40:  // GOTO
+                *instructionCounter = *operand;
+                break;
+            case 41:  // GOTO SI NEGATIVO
+                if (*accumulator < 0) *instructionCounter = *operand;
+                break;
+            case 42:  // GOTO SI CERO
+                if (*accumulator == 0) *instructionCounter = *operand;
+                break;
+            case 43:  // ALTO
+                ejecutando = 0;
+                break;
+
+            default:
+                printf("ERROR FATAL: codigo de operacion invalido: %d.\n", *operationCode);
+                return 0;
+        }
+    }
+    printf("\nTermino la ejecucion de Simpletron.\n");
+    return 1;
+}
+
+void vaciadoMemoria(int memory[], int accumulator, int instructionCounter,
+                    int instructionRegister, int operationCode, int operand)
+{
+    printf("\n=============== VACIADO DE SIMPLETRON ===============\n");
+    printf("REGISTROS:\n");
+    printf("Acumulador:              %+06d\n", accumulator);
+    printf("Contador de instrucciones: %03d\n", instructionCounter);
+    printf("Registro de instruccion: %+06d\n", instructionRegister);
+    printf("Codigo de operacion:    %02d\n", operationCode);
+    printf("Operando:               %03d\n", operand);
+
+    printf("MEMORIA ENTERA (posiciones con datos):\n");
+    int encontrados = 0;
+    for (int i=0; i<TAM_MEMORIA; i++) {
+        if (memory[i] != 0) {
+            printf("[%03d] = %+06d\n", i, memory[i]);
+            encontrados++;
+        }
+    }
+    if (encontrados == 0) printf("(sin valores diferentes de cero)\n");
+    printf("=====================================================\n");
+}
+
+int main()
+{
+    int memory[TAM_MEMORIA] = {0};
+    int accumulator = 0;
+    int instructionCounter = 0;
+    int instructionRegister = 0;
+    int operationCode = 0;
+    int operand = 0;
+    int instruccionesCargadas = 0;
+
+    printf("*** Bienvenido a Simpletron - Actualizacion 1 ***\n");
+    if (!cargarPrograma(memory, &instruccionesCargadas)) return 1;
+    printf("Comienza la ejecucion de Simpletron.\n");
+    int exito = ejecutarPrograma(memory, &accumulator, &instructionCounter,
+                                &instructionRegister, &operationCode, &operand,
+                                instruccionesCargadas);
+    vaciadoMemoria(memory, accumulator, instructionCounter,
+                   instructionRegister, operationCode, operand);
+    return exito ? 0 : 1;
+}
