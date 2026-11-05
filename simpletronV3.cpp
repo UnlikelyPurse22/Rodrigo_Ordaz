@@ -1,4 +1,4 @@
-// Simpletron - Actualizacion 6: Entrada de cadenas ASCII
+// Simpletron - Actualizacion 7: Salida de cadenas ASCII
 // C++ sencillo: funciones, arreglos, switch y printf (estilo del proyecto).
 // Archivo completo y acumulativo: se usa como simpletron.cpp en cada commit.
 #include <stdio.h>
@@ -249,6 +249,30 @@ int ejecutarPrograma(int memory[], int *accumulator, int *instructionCounter,
                 }
                 break;
             }
+            case 14: {  // ESCRIBIR CADENA ASCII (sin agregar nueva linea)
+                int palabra = memory[*operand];
+                if (palabra < 0) {
+                    printf("ERROR FATAL: cabecera de cadena invalida.\n");
+                    return 0;
+                }
+                int longitud = palabra / 1000;
+                int primero = palabra % 1000;
+                if (longitud > 99 || (longitud == 0 && primero != 0) ||
+                    (longitud > 0 && (*operand + longitud > TAM_MEMORIA || primero > 127))) {
+                    printf("ERROR FATAL: longitud/direccion/ASCII de cadena invalida.\n");
+                    return 0;
+                }
+                // Verificar toda la cadena ANTES de imprimir.
+                for (int i=1; i<longitud; i++) {
+                    if (memory[*operand+i] < 0 || memory[*operand+i] > 127) {
+                        printf("ERROR FATAL: ASCII invalido en la cadena.\n");
+                        return 0;
+                    }
+                }
+                if (longitud > 0) putchar((char)primero);
+                for (int i=1; i<longitud; i++) putchar((char)memory[*operand+i]);
+                break;
+            }
             case 34:  // RESIDUO: acumulador % memoria[operando]
                 if (memory[*operand] == 0) {
                     printf("ERROR FATAL: modulo entre cero.\n");
@@ -327,7 +351,7 @@ int main()
     int operand = 0;
     int instruccionesCargadas = 0;
 
-    printf("*** Bienvenido a Simpletron - Actualizacion 6 ***\n");
+    printf("*** Bienvenido a Simpletron - Actualizacion 7 ***\n");
     if (!cargarPrograma(memory, &instruccionesCargadas)) return 1;
     printf("Comienza la ejecucion de Simpletron.\n");
     int exito = ejecutarPrograma(memory, &accumulator, &instructionCounter,
